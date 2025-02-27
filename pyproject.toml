@@ -91,6 +91,8 @@ ignore = [
     "E501",     # Line too long, this is autoformatted
     "RET504",   # Uneccesary assignment before return, this helps in debugging
     "PLR0913",  # Too many arguments, this is a bad fit for pipelines
+    "T201",     # Print is fine
+    "S101",     # assert is fine
 ]
 
 [tool.ruff.lint.per-file-ignores]
