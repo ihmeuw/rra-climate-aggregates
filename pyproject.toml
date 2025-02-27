@@ -37,6 +37,11 @@ rasterra = "^0.6.1"
 xarray = "^2025.1.2"
 shapely = "^2.0.7"
 rioxarray = "^0.18.2"
+pyarrow = "^19.0.1"
+pyyaml = "^6.0.2"
+netcdf4 = "^1.7.2"
+tqdm = "^4.67.1"
+rra-tools = "^1.0.23"
 
 [tool.poetry.group.dev.dependencies]
 mkdocstrings = {version = "*", extras = ["python"]}
@@ -53,13 +58,19 @@ pytest-github-actions-annotate-failures = "*"
 pytest-cov = "*"
 python-kacl = "*"
 ruff = "*"
+types-shapely = "^2.0.0.20250202"
+types-pyyaml = "^6.0.12.20241230"
+types-tqdm = "^4.67.0.20241221"
+pandas-stubs = "^2.2.3.241126"
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-my-cli = "rra_climate_aggregates.cli:main"
+carun = "rra_climate_aggregates.cli:carun"
+catask = "rra_climate_aggregates.cli:catask"
 
 [tool.ruff]
 target-version = "py310" # The lowest supported version
@@ -78,6 +89,8 @@ ignore = [
     "RUF007",   # zip is idiomatic, this is a dumb check
     "RET505",   # Else after return, makes a lot of false positives
     "E501",     # Line too long, this is autoformatted
+    "RET504",   # Uneccesary assignment before return, this helps in debugging
+    "PLR0913",  # Too many arguments, this is a bad fit for pipelines
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -124,18 +137,10 @@ exclude_lines = [
 strict = true  # See all the enabled flags `mypy --help | grep -A 10 'Strict mode'`
 disallow_any_unimported = true
 
-# If you need to ignore something for some specific module,
-# add overrides for them. Avoid changing the global config!
-# For example:
-# [[tool.mypy.overrides]]
-# module = [
-#  "my_unpyted_dependency1.*",
-#  "my_unpyted_dependency2.*"
-# ]
-# ignore_missing_imports = true
-
-# [[tool.mypy.overrides]]
-# module = [
-#   "tests/my_thing/test_my_thing",
-# ]
-# disallow_untyped_defs = false
+[[tool.mypy.overrides]]
+module = [
+    "rasterio.*",
+    "affine.*",
+    "geopandas.*",
+]
+ignore_missing_imports = true
