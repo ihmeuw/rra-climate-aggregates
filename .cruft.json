@@ -1,6 +1,6 @@
 {
   "template": "https://github.com/collijk/python-package-cookiecutter",
-  "commit": "cd59edc69d51f9485bca69eb940e0706bc65e9ba",
+  "commit": "d86abba2604d3fb06b718d45a83170b6315debde",
   "checkout": null,
   "context": {
     "cookiecutter": {
@@ -12,7 +12,7 @@
       "package_name": "rra_climate_aggregates",
       "project_short_description": "Population-weighted aggregates of climate variables.",
       "_template": "https://github.com/collijk/python-package-cookiecutter",
-      "_commit": "cd59edc69d51f9485bca69eb940e0706bc65e9ba"
+      "_commit": "d86abba2604d3fb06b718d45a83170b6315debde"
     }
   },
   "directory": null
