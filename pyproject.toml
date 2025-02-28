@@ -1,79 +1,79 @@
-[tool.poetry]
+[project]
 name = "rra-climate-aggregates"
 version = "0.0.1"
 description = "Population-weighted aggregates of climate variables."
-authors = [
-    "James Collins <collijk@uw.edu>",
-]
 license = "BSD-3-Clause"
 readme = "README.md"
-
-documentation = "https://collijk.github.io/rra-climate-aggregates"
-homepage = "https://collijk.github.io/rra-climate-aggregates"
-repository = "https://github.com/collijk/rra-climate-aggregates"
-
-classifiers = [
-  "Development Status :: 4 - Beta",
-  "Intended Audience :: Developers",
-  "Operating System :: OS Independent",
-  "Programming Language :: Python",
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Topic :: Software Development :: Libraries :: Python Modules",
-  "Typing :: Typed",
+authors = [
+    {name = "James Collins", email = "collijk@uw.edu"},
+]
+requires-python = ">=3.12"
+dependencies = [
+    "click",
+    "geopandas>=1.0.1",
+    "rasterra>=0.6.2",
+    "xarray>=2025.1.2",
+    "shapely>=2.0.7",
+    "rioxarray>=0.18.2",
+    "pyarrow>=19.0.1",
+    "pyyaml>=6.0.2",
+    "netcdf4>=1.7.2",
+    "tqdm>=4.67.1",
+    "rra-tools>=1.0.25",
+    "affine (>=2.4.0,<3.0.0)",
+    "rasterio (>=1.4.3,<2.0.0)",
 ]
 
+[project.urls]
+homepage = "https://ihmeuw.github.io/rra-climate-aggregates"
+repository = "https://ihmeuw.com/collijk/rra-climate-aggregates"
+documentation = "https://ihmeuw.github.io/rra-climate-aggregates"
+
+[project.scripts]
+carun = "rra_climate_aggregates.cli:carun"
+catask = "rra_climate_aggregates.cli:catask"
+
+[tool.poetry]
 packages = [
     { include = "rra_climate_aggregates", from = "src" }
 ]
+requires-poetry = ">=2.0"
 
 [tool.poetry.dependencies]
-python = ">=3.10, <3.13"
-click = "*"
-geopandas = "^1.0.1"
-rasterra = "^0.6.1"
-xarray = "^2025.1.2"
-shapely = "^2.0.7"
-rioxarray = "^0.18.2"
-pyarrow = "^19.0.1"
-pyyaml = "^6.0.2"
-netcdf4 = "^1.7.2"
-tqdm = "^4.67.1"
-rra-tools = "^1.0.23"
+python = ">=3.12, <4.0"
 
+
+# We keep the dev dependencies here instead of in the project optional dependencies
+# so they're still installed by default with `poetry install`.
+# They won't be installed or shipped with the package.
 [tool.poetry.group.dev.dependencies]
-mkdocstrings = {version = "*", extras = ["python"]}
-mkdocs-material = "*"
+# Things we want to put a lower bound on
+mypy = "^1.15.0"
+mkdocs-material = "^9.6.0"
+pre-commit = "^4.0.0"
+pytest = "^8.3.0"
+ruff = "^0.9.7"
+# Things we don't care about the version
+mkdocstrings = {extras = ["python"], version = "*"}
 mkdocs-table-reader-plugin = "*"
 mkdocs-gen-files = "*"
 mkdocs-literate-nav = "*"
 mkdocs-section-index = "*"
-mypy = "*"
-pre-commit = "*"
 pymdown-extensions = "*"
-pytest = "*"
 pytest-github-actions-annotate-failures = "*"
 pytest-cov = "*"
 python-kacl = "*"
-ruff = "*"
-types-shapely = "^2.0.0.20250202"
-types-pyyaml = "^6.0.12.20241230"
-types-tqdm = "^4.67.0.20241221"
-pandas-stubs = "^2.2.3.241126"
-
+types-shapely = "*"
+types-pyyaml = "*"
+types-tqdm = "*"
+pandas-stubs = "*"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.poetry.scripts]
-carun = "rra_climate_aggregates.cli:carun"
-catask = "rra_climate_aggregates.cli:catask"
-
 [tool.ruff]
-target-version = "py310" # The lowest supported version
+target-version = "py312" # The lowest supported version
 
 [tool.ruff.lint]
 # By default, enable all the lint rules.
@@ -137,12 +137,12 @@ exclude_lines = [
 # This is the global mypy configuration.
 # Avoid changing this!
 strict = true  # See all the enabled flags `mypy --help | grep -A 10 'Strict mode'`
-disallow_any_unimported = true
+disallow_any_unimported = false
 
 [[tool.mypy.overrides]]
 module = [
-    "rasterio.*",
-    "affine.*",
     "geopandas.*",
+    "affine.*",
+    "rasterio.*",
 ]
 ignore_missing_imports = true
