@@ -20,6 +20,8 @@ dependencies = [
     "netcdf4>=1.7.2",
     "tqdm>=4.67.1",
     "rra-tools>=1.0.25",
+    "affine (>=2.4.0,<3.0.0)",
+    "rasterio (>=1.4.3,<2.0.0)",
 ]
 
 [project.urls]
@@ -140,5 +142,7 @@ disallow_any_unimported = false
 [[tool.mypy.overrides]]
 module = [
     "geopandas.*",
+    "affine.*",
+    "rasterio.*",
 ]
 ignore_missing_imports = true

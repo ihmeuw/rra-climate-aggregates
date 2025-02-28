@@ -1,5 +1,5 @@
 import numpy as np
-import rasterra as rt
+import numpy.typing as npt
 from rasterio.features import MergeAlg, rasterize
 
 from rra_climate_aggregates.data import (
@@ -10,7 +10,7 @@ from rra_climate_aggregates.data import (
 def build_location_masks(
     hierarchy: str,
     pm_data: PopulationModelData,
-) -> tuple[dict[int, tuple[slice, slice]], rt.RasterArray]:
+) -> tuple[dict[int, tuple[slice, slice]], npt.NDArray[np.uint32]]:
     template = pm_data.load_real_results("2020q1")
 
     raking_shapes = pm_data.load_raking_shapes(hierarchy)

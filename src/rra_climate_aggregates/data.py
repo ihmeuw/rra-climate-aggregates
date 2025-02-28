@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import TypeAlias
 
 import geopandas as gpd
 import pandas as pd
@@ -12,9 +11,9 @@ from rra_tools.shell_tools import mkdir, touch
 from rra_climate_aggregates import constants as cac
 
 # Type aliases
-Polygon: TypeAlias = shapely.Polygon | shapely.MultiPolygon
-BBox: TypeAlias = tuple[float, float, float, float]
-Bounds: TypeAlias = BBox | Polygon
+type Polygon = shapely.Polygon | shapely.MultiPolygon
+type BBox = tuple[float, float, float, float]
+type Bounds = BBox | Polygon
 
 
 class PopulationModelData:
@@ -112,8 +111,8 @@ class ClimateData:
     def annual_results(self) -> Path:
         return self.results / "annual"
 
-    def annual_results_path(self, scenario: str, measure: str, draw: int) -> Path:
-        raw_path = self.annual_results / scenario / measure / f"{draw:>03}.nc"
+    def annual_results_path(self, scenario: str, measure: str, draw: str) -> Path:
+        raw_path = self.annual_results / scenario / measure / f"{draw}.nc"
         resolved = raw_path.resolve()
         gcm = resolved.stem
         actual_path = (
@@ -127,7 +126,7 @@ class ClimateData:
         )
         return actual_path
 
-    def load_annual_results(self, scenario: str, measure: str, draw: int) -> xr.Dataset:
+    def load_annual_results(self, scenario: str, measure: str, draw: str) -> xr.Dataset:
         path = self.annual_results_path(scenario, measure, draw)
         ds = xr.open_dataset(path, decode_coords="all")
         ds = ds.rio.write_crs("EPSG:4326")
