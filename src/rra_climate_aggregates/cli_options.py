@@ -77,6 +77,19 @@ def with_draw[**P, T](
     )
 
 
+def with_hierarchy[**P, T](
+    *,
+    allow_all: bool = False,
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    return with_choice(
+        "hierarchy",
+        allow_all=allow_all,
+        choices=cac.HIERARCHY_MAP,
+        help="Hierarchy to process.",
+        convert=allow_all,
+    )
+
+
 __all__ = [
     "RUN_ALL",
     "convert_choice",
