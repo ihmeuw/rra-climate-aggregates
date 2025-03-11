@@ -30,13 +30,14 @@ MEASURES = [
 
 DRAWS = [f"{d:>03}" for d in range(100)]
 
-SHAPE_HIERARCHIES = [
-    # "gbd_2021",
-    "lsae_a2",
-]
-
-AGG_HIERARCHIES = [
-    "gbd_2021",
-    "fhs_2021",
-    "lsae",
-]
+# Mapping between pixel aggregation hierarchies to location aggregation hierarchies.
+# The pixel aggregation hierarchies are the most detailed shapes used to
+# aggregate the pixel data to the location level.
+# The location aggregation hierarchies correspond to particular modeling datasets.
+# Their most-detailed shapes may be a subset of the pixel aggregation hierarchy they
+# map to. They are used to produce results from the most detailed level up to the global
+# level.
+HIERARCHY_MAP = {
+    "gbd_2021": ["gbd_2021", "fhs_2021"],
+    "lsae_1209": ["lsae_1209"],
+}

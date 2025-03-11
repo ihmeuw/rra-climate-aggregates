@@ -17,7 +17,6 @@ type Bounds = BBox | Polygon
 
 
 class PopulationModelData:
-    _modeling_frame_filename = "modeling_frame.parquet"
 
     def __init__(
         self,
@@ -30,66 +29,53 @@ class PopulationModelData:
         return self._root
 
     @property
-    def modeling(self) -> Path:
-        return self.root / "modeling"
-
-    def modeling_frame_path(self) -> Path:
-        resolution_root = self.modeling / f"{cac.RESOLUTION}m"
-        return resolution_root / self._modeling_frame_filename
-
-    def load_modeling_frame(self) -> gpd.GeoDataFrame:
-        path = self.modeling_frame_path()
-        return gpd.read_parquet(path)
-
-    def load_block_frame(self, block_key: str) -> gpd.GeoDataFrame:
-        path = self.modeling_frame_path()
-        filters = [("block_key", "==", block_key)]
-        return gpd.read_parquet(path, filters=filters)
-
-    @property
     def results(self) -> Path:
-        return Path(self.root, "results")
+        return Path(self.root, "results") / "current" / "wgs84_0p01"
 
-    def results_path(self, block_key: str, time_point: str) -> Path:
-        results_root = self.results / "current"
-        spec_path = results_root / "specification.yaml"
-        with spec_path.open("r") as f:
-            spec = yaml.safe_load(f)
-        true_root = Path(spec["output_root"])
-        path = true_root / "raked_predictions" / time_point / f"{block_key}.tif"
-        return path
-
-    def load_results(self, block_key: str, time_point: str) -> rt.RasterArray:
-        path = self.results_path(block_key, time_point)
-        return rt.load_raster(path)
-
-    def load_real_results(self, time_point: str) -> rt.RasterArray:
-        path = self.results / "current" / "wgs84_0p01" / f"{time_point}.tif"
+    def load_results(self, time_point: str) -> rt.RasterArray:
+        path = self.results / f"{time_point}.tif"
         return rt.load_raster(path)
 
     @property
-    def raking_shapes(self) -> Path:
+    def raking_data(self) -> Path:
         return self.root / "admin-inputs" / "raking"
 
-    def load_raking_shapes(
-        self, hierarchy: str, bbox: shapely.Polygon | None = None
-    ) -> gpd.GeoDataFrame:
-        if "gbd" in hierarchy or "fhs" in hierarchy:
-            shape_path = self.raking_shapes / f"shapes_{hierarchy}_wpp_2022.parquet"
-            gdf = gpd.read_parquet(shape_path, bbox=bbox)
-            pop_path = self.raking_shapes / f"population_{hierarchy}_wpp_2022.parquet"
+    def load_raking_shapes(self, pixel_hierarchy: str) -> gpd.GeoDataFrame:
+        if pixel_hierarchy == "gbd_2021":
+            shape_path = self.raking_data / f"shapes_{pixel_hierarchy}_wpp_2022.parquet"
+            gdf = gpd.read_parquet(shape_path)
+
+            # We're using population data here instead of a hierarchy because
+            # The populations include extra locations we've supplemented that aren't
+            # modeled in GBD (e.g. locations with zero popoulation or places that
+            # GBD uses population scalars from WPP to model)
+            pop_path = self.raking_data / f"population_{pixel_hierarchy}_wpp_2022.parquet"
             pop = pd.read_parquet(pop_path)
-            year_mask = pop.year_id == 2020  # noqa: PLR2004
+
             keep_cols = ["location_id", "location_name", "most_detailed", "parent_id"]
-            out = gdf.merge(pop.loc[year_mask, keep_cols], on="location_id", how="left")
-            out = out[out.most_detailed == 1]
-        else:
-            assert "lsae" in hierarchy
-            shape_path = (
-                self.raking_shapes / "gbd-inputs" / f"shapes_{hierarchy}.parquet"
+            keep_mask = (
+                (pop.year_id == pop.year_id.max())  # Year doesn't matter
+                & (pop.most_detailed == 1)
             )
-            out = gpd.read_parquet(shape_path, bbox=bbox)
+            out = gdf.merge(pop.loc[keep_mask, keep_cols], on="location_id", how="left")
+        elif pixel_hierarchy in ["lsae_1209", "lsae_1285"]:
+            # This is only a2 geoms, so already most detailed
+            shape_path = (
+                self.raking_data / "gbd-inputs" / f"shapes_{pixel_hierarchy}_a2.parquet"
+            )
+            out = gpd.read_parquet(shape_path)
+        else:
+            msg = f"Unknown pixel hierarchy: {pixel_hierarchy}"
+            raise ValueError(msg)
         return out
+
+    def load_hierarchy(self, admin_hierarchy: str) -> pd.DataFrame:
+        allowed_hierarchies = ["gbd_2021", "fhs_2021", "lsae_1209", "lsae_1285"]
+        if admin_hierarchy not in allowed_hierarchies:
+            msg = f"Unknown admin hierarchy: {admin_hierarchy}"
+            raise ValueError(msg)
+        path = self.raking_data / "gbd-inputs" / f"hierarchy_{admin_hierarchy}.parquet"
+        return pd.read_parquet(path)
 
 
 class ClimateData:
@@ -112,19 +98,7 @@ class ClimateData:
         return self.results / "annual"
 
     def annual_results_path(self, scenario: str, measure: str, draw: str) -> Path:
-        raw_path = self.annual_results / scenario / measure / f"{draw}.nc"
-        resolved = raw_path.resolve()
-        gcm = resolved.stem
-        actual_path = (
-            self.annual_results
-            / "raw"
-            / "v2"
-            / "compiled"
-            / scenario
-            / measure
-            / f"{gcm}.nc"
-        )
-        return actual_path
+        return self.annual_results / scenario / measure / f"{draw}.nc"
 
     def load_annual_results(self, scenario: str, measure: str, draw: str) -> xr.Dataset:
         path = self.annual_results_path(scenario, measure, draw)
@@ -145,9 +119,6 @@ class ClimateAggregateData:
         mkdir(self.root, exist_ok=True)
         mkdir(self.logs, exist_ok=True)
 
-        mkdir(self.raw_results, exist_ok=True)
-        mkdir(self.results, exist_ok=True)
-
     @property
     def root(self) -> Path:
         return self._root
@@ -159,28 +130,75 @@ class ClimateAggregateData:
     def log_dir(self, step_name: str) -> Path:
         return self.logs / step_name
 
-    @property
-    def raw_results(self) -> Path:
-        return self.root / "raw-results"
+    def version_root(self, version: str) -> Path:
+        return self.root / version
+
+    def raw_results_root(self, version: str) -> Path:
+        return self.version_root(version) / "raw-results"
 
     def raw_results_path(
-        self, version: str, hierarchy: str, measure: str, draw: str
+        self, version: str, hierarchy: str, scenario: str, measure: str, draw: str
     ) -> Path:
-        return self.raw_results / version / hierarchy / measure / f"{draw}.parquet"
+        root = self.raw_results_root(version)
+        return root / hierarchy / scenario / measure / f"{draw}.parquet"
 
     def save_raw_results(
         self,
         df: pd.DataFrame,
         version: str,
         hierarchy: str,
+        scenario: str,
         measure: str,
         draw: str,
     ) -> None:
-        path = self.raw_results_path(version, hierarchy, measure, draw)
+        path = self.raw_results_path(version, hierarchy, scenario, measure, draw)
         mkdir(path.parent, exist_ok=True, parents=True)
         touch(path, clobber=True)
         df.to_parquet(path)
 
-    @property
-    def results(self) -> Path:
-        return self.root / "results"
+    def load_raw_results(
+        self, version: str, hierarchy: str, scenario: str, measure: str, draw: str
+    ) -> pd.DataFrame:
+        path = self.raw_results_path(version, hierarchy, scenario, measure, draw)
+        return pd.read_parquet(path)
+
+    def results_root(self, version: str) -> Path:
+        return self.version_root(version) / "results"
+
+    def population_path(self, version: str, hierarchy: str) -> Path:
+        return self.results_root(version) / hierarchy / "population.parquet"
+
+    def save_population(self, df: pd.DataFrame, version: str, hierarchy: str) -> None:
+        path = self.population_path(version, hierarchy)
+        mkdir(path.parent, exist_ok=True, parents=True)
+        touch(path, clobber=True)
+        df.to_parquet(path)
+
+    def load_population(self, version: str, hierarchy: str) -> pd.DataFrame:
+        path = self.population_path(version, hierarchy)
+        return pd.read_parquet(path)
+
+    def results_path(
+        self, version: str, hierarchy: str, scenario: str, measure: str
+    ) -> Path:
+        return self.results_root(version) / hierarchy / f"{measure}_{scenario}.parquet"
+
+    def save_results(
+        self,
+        df: pd.DataFrame,
+        version: str,
+        hierarchy: str,
+        scenario: str,
+        measure: str,
+    ) -> None:
+        path = self.results_path(version, hierarchy, scenario, measure)
+        mkdir(path.parent, exist_ok=True, parents=True)
+        touch(path, clobber=True)
+        df.to_parquet(path)
+
+    def load_results(
+        self, version: str, hierarchy: str, scenario: str, measure: str
+    ) -> pd.DataFrame:
+        path = self.results_path(version, hierarchy, scenario, measure)
+        return pd.read_parquet(path)
+
