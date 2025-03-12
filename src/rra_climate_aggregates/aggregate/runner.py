@@ -1,9 +1,10 @@
+import itertools
+
 import click
 import numpy as np
 import pandas as pd
 import tqdm
 from rra_tools import jobmon
-import itertools
 
 from rra_climate_aggregates import cli_options as clio
 from rra_climate_aggregates import constants as cac
@@ -37,7 +38,7 @@ def aggregate_main(
     ds = cd_data.load_annual_results(scenario, measure, draw)
 
     subset_hierarchies = cac.HIERARCHY_MAP[hierarchy]
-    
+
     print("Processing", hierarchy)
     print("Building location masks")
     bounds_map, mask = utils.build_location_masks(hierarchy, pm_data)
@@ -48,9 +49,7 @@ def aggregate_main(
         pop_arr = pop_raster._ndarray  # noqa: SLF001
         clim_var = ds.sel(year=year)["value"]
         clim_raster = (
-            to_raster(clim_var)
-            .resample_to(pop_raster, "nearest")
-            .astype(np.float32)
+            to_raster(clim_var).resample_to(pop_raster, "nearest").astype(np.float32)
         )
         pop_weighted = pop_raster * clim_raster
         pop_weighted_arr = pop_weighted._ndarray  # noqa: SLF001
@@ -71,7 +70,7 @@ def aggregate_main(
         columns=[
             "location_id",
             "year",
-            "scenario",                
+            "scenario",
             "weighted_climate",
             "population",
             "value",
@@ -163,7 +162,7 @@ def aggregate(
         if not ca_data.raw_results_path(version, h, s, m, j).exists():
             jobs.append((s, m, j, h))
     jobs = list(set(jobs))
-    
+
     print(f"Running {len(jobs)} jobs")
 
     jobmon.run_parallel(
@@ -184,7 +183,7 @@ def aggregate(
             "cores": 1,
             "memory": "30G",
             "runtime": "400m",
-            "project": "proj_rapidresponse",            
+            "project": "proj_rapidresponse",
         },
         log_root=ca_data.log_dir("aggregate"),
         max_attempts=3,
