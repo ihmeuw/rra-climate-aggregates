@@ -49,7 +49,7 @@ def aggregate_pop_to_hierarchy(
     data: pd.DataFrame, hierarchy: pd.DataFrame
 ) -> pd.DataFrame:
     results = (
-        data.drop(columns=["weighted_climate", "value"])
+        data.drop(columns=["weighted_climate", "scenario", "value"])
         .rename(columns={"population": "value"})
         .set_index("location_id")
         .copy()
@@ -61,7 +61,7 @@ def aggregate_pop_to_hierarchy(
         subset["parent_id"] = parent_map
 
         parent_values = (
-            subset.groupby(["year", "scenario", "parent_id"])[["value"]]
+            subset.groupby(["year_id", "parent_id"])[["value"]]
             .sum()
             .reset_index()
             .rename(columns={"parent_id": "location_id"})
@@ -71,7 +71,7 @@ def aggregate_pop_to_hierarchy(
 
     results = (
         results.reset_index()
-        .sort_values(["location_id", "year"])
+        .sort_values(["location_id", "year_id"])
         .reset_index(drop=True)
     )
     return results
@@ -90,7 +90,7 @@ def aggregate_climate_to_hierarchy(
         subset["parent_id"] = parent_map
 
         parent_values = (
-            subset.groupby(["year", "scenario", "parent_id"])[
+            subset.groupby(["year_id", "scenario", "parent_id"])[
                 ["weighted_climate", "population"]
             ]
             .sum()
@@ -105,7 +105,7 @@ def aggregate_climate_to_hierarchy(
     results = (
         results.drop(columns=["weighted_climate", "population"])
         .reset_index()
-        .sort_values(["location_id", "year"])
+        .sort_values(["location_id", "year_id"])
         .reset_index(drop=True)
     )
     return results
