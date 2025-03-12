@@ -5,7 +5,6 @@ import pandas as pd
 import rasterra as rt
 import shapely
 import xarray as xr
-import yaml
 from rra_tools.shell_tools import mkdir, touch
 
 from rra_climate_aggregates import constants as cac
@@ -17,7 +16,6 @@ type Bounds = BBox | Polygon
 
 
 class PopulationModelData:
-
     def __init__(
         self,
         root: str | Path = cac.POPULATION_MODEL_ROOT,
@@ -49,7 +47,9 @@ class PopulationModelData:
             # The populations include extra locations we've supplemented that aren't
             # modeled in GBD (e.g. locations with zero popoulation or places that
             # GBD uses population scalars from WPP to model)
-            pop_path = self.raking_data / f"population_{pixel_hierarchy}_wpp_2022.parquet"
+            pop_path = (
+                self.raking_data / f"population_{pixel_hierarchy}_wpp_2022.parquet"
+            )
             pop = pd.read_parquet(pop_path)
 
             keep_cols = ["location_id", "location_name", "most_detailed", "parent_id"]
@@ -174,8 +174,13 @@ class ClimateAggregateData:
         touch(path, clobber=True)
         df.to_parquet(path)
 
-    def load_population(self, version: str, hierarchy: str) -> pd.DataFrame:
+    def load_population(
+        self, version: str, hierarchy: str, location_id: int | None = None
+    ) -> pd.DataFrame:
         path = self.population_path(version, hierarchy)
+        if location_id is not None:
+            filters = [("location_id", "==", location_id)]
+            return pd.read_parquet(path, filters=filters)
         return pd.read_parquet(path)
 
     def results_path(
@@ -197,8 +202,15 @@ class ClimateAggregateData:
         df.to_parquet(path)
 
     def load_results(
-        self, version: str, hierarchy: str, scenario: str, measure: str
+        self,
+        version: str,
+        hierarchy: str,
+        scenario: str,
+        measure: str,
+        location_id: int | None = None,
     ) -> pd.DataFrame:
         path = self.results_path(version, hierarchy, scenario, measure)
+        if location_id is not None:
+            filters = [("location_id", "==", location_id)]
+            return pd.read_parquet(path, filters=filters)
         return pd.read_parquet(path)
-

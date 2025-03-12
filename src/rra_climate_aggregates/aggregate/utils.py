@@ -45,7 +45,9 @@ def build_location_masks(
     return bounds_map, location_mask
 
 
-def aggregate_pop_to_hierarchy(data: pd.DataFrame, hierarchy: pd.DataFrame) -> pd.DataFrame:
+def aggregate_pop_to_hierarchy(
+    data: pd.DataFrame, hierarchy: pd.DataFrame
+) -> pd.DataFrame:
     results = (
         data.drop(columns=["weighted_climate", "value"])
         .rename(columns={"population": "value"})
@@ -67,10 +69,17 @@ def aggregate_pop_to_hierarchy(data: pd.DataFrame, hierarchy: pd.DataFrame) -> p
         )
         results = pd.concat([results, parent_values])
 
-    results = results.reset_index().sort_values(["location_id", "year"]).reset_index(drop=True)
+    results = (
+        results.reset_index()
+        .sort_values(["location_id", "year"])
+        .reset_index(drop=True)
+    )
     return results
 
-def aggregate_climate_to_hierarchy(data: pd.DataFrame, hierarchy: pd.DataFrame) -> pd.DataFrame:
+
+def aggregate_climate_to_hierarchy(
+    data: pd.DataFrame, hierarchy: pd.DataFrame
+) -> pd.DataFrame:
     results = data.set_index("location_id").copy()
 
     for level in reversed(list(range(1, hierarchy.level.max() + 1))):
@@ -81,13 +90,17 @@ def aggregate_climate_to_hierarchy(data: pd.DataFrame, hierarchy: pd.DataFrame) 
         subset["parent_id"] = parent_map
 
         parent_values = (
-            subset.groupby(["year", "scenario", "parent_id"])[["weighted_climate", "population"]]
+            subset.groupby(["year", "scenario", "parent_id"])[
+                ["weighted_climate", "population"]
+            ]
             .sum()
             .reset_index()
             .rename(columns={"parent_id": "location_id"})
             .set_index("location_id")
         )
-        parent_values["value"] = parent_values.weighted_climate / parent_values.population
+        parent_values["value"] = (
+            parent_values.weighted_climate / parent_values.population
+        )
         results = pd.concat([results, parent_values])
     results = (
         results.drop(columns=["weighted_climate", "population"])
