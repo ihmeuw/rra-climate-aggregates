@@ -44,7 +44,7 @@ def aggregate_main(
     bounds_map, mask = utils.build_location_masks(hierarchy, pm_data)
     results = []
     print(f"Aggregating data with {len(bounds_map)} locations")
-    for year in tqdm.trange(2020, 2025, disable=not progress_bar):
+    for year in tqdm.trange(1950, 2101, disable=not progress_bar):
         pop_raster = pm_data.load_results(f"{year}q1")
         pop_arr = pop_raster._ndarray  # noqa: SLF001
         clim_var = ds.sel(year=year)["value"]
