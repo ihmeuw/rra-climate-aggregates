@@ -30,6 +30,8 @@ MEASURES = [
 
 DRAWS = [f"{d:>03}" for d in range(100)]
 
+YEARS = list(range(1950, 2101))
+
 # Mapping between pixel aggregation hierarchies to location aggregation hierarchies.
 # The pixel aggregation hierarchies are the most detailed shapes used to
 # aggregate the pixel data to the location level.
