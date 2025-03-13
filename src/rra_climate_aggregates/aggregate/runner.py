@@ -29,44 +29,56 @@ def aggregate_main(
     *,
     progress_bar: bool = False,
 ) -> None:
-    print("Aggregating", scenario, measure, draw)
+    print(f"Aggregating {scenario} {measure} {draw} for {hierarchy}")
     pm_data = PopulationModelData(population_model_root)
     cd_data = ClimateData(climate_data_root)
     ca_data = ClimateAggregateData(output_dir)
 
+    subset_hierarchies = cac.HIERARCHY_MAP[hierarchy]
+
     print("Loading climate data")
     ds = cd_data.load_annual_results(scenario, measure, draw)
 
-    subset_hierarchies = cac.HIERARCHY_MAP[hierarchy]
-
-    print("Processing", hierarchy)
     print("Building location masks")
     bounds_map, mask = utils.build_location_masks(hierarchy, pm_data)
-    results = []
+
     print(f"Aggregating data with {len(bounds_map)} locations")
-    for year in tqdm.trange(1950, 2101, disable=not progress_bar):
+    result_records = []
+    for year in tqdm.tqdm(cac.YEARS, disable=not progress_bar):
+        # Load population data and grab the underlying ndarray (we don't want the metadata)
         pop_raster = pm_data.load_results(f"{year}q1")
         pop_arr = pop_raster._ndarray  # noqa: SLF001
-        clim_var = ds.sel(year=year)["value"]
-        clim_raster = (
-            to_raster(clim_var).resample_to(pop_raster, "nearest").astype(np.float32)
+
+        # Pull out and rasterize the climate data for the current year
+        clim_arr = (
+            to_raster(ds.sel(year=year)["value"])  # noqa: SLF001
+            .resample_to(pop_raster, "nearest")
+            .astype(np.float32)
+            ._ndarray
         )
-        pop_weighted = pop_raster * clim_raster
-        pop_weighted_arr = pop_weighted._ndarray  # noqa: SLF001
+
+        weighted_clim_arr = pop_arr * clim_arr  # type: ignore[operator]
 
         for location_id, (rows, cols) in tqdm.tqdm(
             list(bounds_map.items()), disable=not progress_bar
         ):
+            # Subset the mask to the bbox of the location, then convert from
+            # a uint32 of all location IDs to a boolean mask of the current location
             loc_mask = mask[rows, cols] == location_id
-            loc_clim = pop_weighted_arr[rows, cols]
-            loc_pop = pop_arr[rows, cols]
-            wc = np.nansum(loc_clim[loc_mask])
-            pop = np.nansum(loc_pop[loc_mask])
-            r = wc / pop if pop else np.nan
-            results.append((location_id, year, scenario, wc, pop, r))
 
-    h_results = pd.DataFrame(
-        results,
+            # Subset and mask the weighted climate and population, then sum
+            # all non-nan values
+            loc_weighted_clim = np.nansum(weighted_clim_arr[rows, cols][loc_mask])
+            loc_pop = np.nansum(pop_arr[rows, cols][loc_mask])
+            # Calculate the population-weighted climate value
+            loc_clim = loc_weighted_clim / loc_pop if loc_pop else np.nan
+
+            result_records.append(
+                (location_id, year, scenario, loc_weighted_clim, loc_pop, loc_clim)
+            )
+
+    results = pd.DataFrame(
+        result_records,
         columns=[
             "location_id",
             "year_id",
@@ -78,14 +90,23 @@ def aggregate_main(
     ).sort_values(by=["location_id", "year_id"])
 
     agg_h = pm_data.load_hierarchy(hierarchy)
-    if scenario == "ssp245" and measure == "mean_temperature" and draw == "000":
-        pop = utils.aggregate_pop_to_hierarchy(h_results, agg_h)
+
+    # All jobs aggregate population because it's cheap.
+    # We want it in the outputs though, so pick an arbitrary job to save it.
+    is_write_pop_job = (
+        scenario == "ssp245" and measure == "mean_temperature" and draw == "000"
+    )
+    if is_write_pop_job:
+        # Aggregate population to the main hierarchy, then subset to each
+        # output hierarchy and save the results.
+        pop = utils.aggregate_pop_to_hierarchy(results, agg_h)
         for subset_hierarchy in subset_hierarchies:
             subset_h = pm_data.load_hierarchy(subset_hierarchy)
             subset_pop = pop[pop.location_id.isin(subset_h.location_id)]
             ca_data.save_population(subset_pop, version, subset_hierarchy)
 
-    climate = utils.aggregate_climate_to_hierarchy(h_results, agg_h)
+    # Same operation, aggregate, subset, and save
+    climate = utils.aggregate_climate_to_hierarchy(results, agg_h)
     for subset_hierarchy in subset_hierarchies:
         subset_h = pm_data.load_hierarchy(subset_hierarchy)
         subset_climate = climate[climate.location_id.isin(subset_h.location_id)]
